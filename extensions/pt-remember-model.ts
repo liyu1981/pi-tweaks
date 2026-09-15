@@ -23,18 +23,6 @@ import { baseIdOf, getLock, makeVariantId, OPENROUTER_PROVIDER } from "../src/op
 import { persistDefaultModel } from "../src/pi-settings";
 import { getSettings, loadSettings, updateSettings } from "../src/store";
 
-const STATUS_KEY = "pt-remember-model";
-
-function updateStatus(ctx: ExtensionContext): void {
-	const enabled = getSettings().rememberModel.enabled;
-	ctx.ui.setStatus(
-		STATUS_KEY,
-		enabled
-			? ctx.ui.theme.fg("accent", "remember-model: on")
-			: ctx.ui.theme.fg("dim", "remember-model: off"),
-	);
-}
-
 /** Resolve the model to restore for a remembered `provider`/`modelId` pair. */
 async function resolveModel(
 	ctx: ExtensionContext,
@@ -64,13 +52,24 @@ export default async function (pi: ExtensionAPI) {
 			draft.rememberModel.last = { provider, modelId: baseId };
 		});
 		// Keep pi's own settings.json in sync for the next startup.
-		await persistDefaultModel(provider, baseId);
-		updateStatus(ctx);
+		const persisted = await persistDefaultModel(provider, baseId);
+		if (persisted) {
+			// `notify(..., "info")` maps to pi's showStatus(), which coalesces
+			// consecutive status lines. The /model selector and Ctrl+P emit their
+			// own "Model: ..." status right after setModel() resolves (which awaits
+			// this handler), overwriting our message. Defer one tick so ours lands
+			// last and stays visible.
+			setTimeout(() => {
+				ctx.ui.notify(
+					`pt-remember-model: remembered model: ${provider}/${persisted} in settings.json`,
+					"info",
+				);
+			}, 0);
+		}
 	});
 
 	// Restore the last model on new sessions and fresh startups.
 	pi.on("session_start", async (event, ctx) => {
-		updateStatus(ctx);
 		if (!getSettings().rememberModel.enabled) return;
 		if (event.reason !== "new" && event.reason !== "startup") return;
 
@@ -99,7 +98,6 @@ export default async function (pi: ExtensionAPI) {
 				await updateSettings((draft) => {
 					draft.rememberModel.enabled = enabled;
 				});
-				updateStatus(ctx);
 				ctx.ui.notify(`remember-model ${enabled ? "enabled" : "disabled"}`, "info");
 				return;
 			}

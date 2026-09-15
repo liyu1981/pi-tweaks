@@ -11,16 +11,22 @@ import { readFile, writeFile } from "node:fs/promises";
 import { agentPath } from "./agent-dir";
 import { getLock, makeVariantId, OPENROUTER_PROVIDER } from "./openrouter";
 
-export async function persistDefaultModel(provider: string, baseId: string): Promise<void> {
+export async function persistDefaultModel(
+	provider: string,
+	baseId: string,
+): Promise<string | undefined> {
 	try {
 		const path = agentPath("settings.json");
 		const raw = await readFile(path, "utf8");
 		const settings = JSON.parse(raw) as Record<string, unknown>;
 		const lock = provider === OPENROUTER_PROVIDER ? await getLock(baseId) : undefined;
+		const modelId = lock ? makeVariantId(baseId, lock) : baseId;
 		settings.defaultProvider = provider;
-		settings.defaultModel = lock ? makeVariantId(baseId, lock) : baseId;
+		settings.defaultModel = modelId;
 		await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+		return modelId;
 	} catch {
 		// Missing or invalid settings.json: nothing to persist.
+		return undefined;
 	}
 }

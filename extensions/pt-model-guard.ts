@@ -43,25 +43,6 @@ function parseModelValue(value: string): { provider: string; model: string } {
 	return { provider, model: modelParts.join("/") };
 }
 
-function updateStatus(ctx: ExtensionContext, config: ModelGuardState): void {
-	if (!config.enabled) {
-		ctx.ui.setStatus("pt-model-guard", ctx.ui.theme.fg("dim", "model guard: off"));
-		return;
-	}
-	if (config.allowedModels.length === 0) {
-		ctx.ui.setStatus("pt-model-guard", ctx.ui.theme.fg("dim", "model guard: —"));
-		return;
-	}
-	const names = config.allowedModels.map(formatModel);
-	const maxLen = 60;
-	let display = names.join(", ");
-	if (display.length > maxLen) display = `${display.slice(0, maxLen - 3)}...`;
-	ctx.ui.setStatus(
-		"pt-model-guard",
-		ctx.ui.theme.fg("accent", `model guard (${config.allowedModels.length}): ${display}`),
-	);
-}
-
 // ─── Multi-Select Picker with Search ───────────────────────────────────
 
 interface PickerItem {
@@ -320,21 +301,19 @@ export default async function (pi: ExtensionAPI) {
 
 			if (sub === "on" || sub === "off") {
 				const enabled = sub === "on";
-				const next = await saveGuard((draft) => {
+				await saveGuard((draft) => {
 					draft.enabled = enabled;
 				});
-				updateStatus(ctx, next);
 				ctx.ui.notify(`Model guard ${enabled ? "enabled" : "disabled"}`, "info");
 				return;
 			}
 
 			if (sub === "toggle") {
 				let enabled = false;
-				const next = await saveGuard((draft) => {
+				await saveGuard((draft) => {
 					draft.enabled = !draft.enabled;
 					enabled = draft.enabled;
 				});
-				updateStatus(ctx, next);
 				ctx.ui.notify(`Model guard ${enabled ? "enabled" : "disabled"}`, "info");
 				return;
 			}
@@ -366,7 +345,6 @@ export default async function (pi: ExtensionAPI) {
 						await saveGuard((draft) => {
 							draft.allowedModels.push(...newModels);
 						});
-						updateStatus(ctx, getSettings().modelGuard);
 						ctx.ui.notify(
 							`Added ${newModels.length} model(s): ${newModels.map(formatModel).join(", ")}`,
 							"info",
@@ -380,7 +358,6 @@ export default async function (pi: ExtensionAPI) {
 						draft.allowedModels = draft.allowedModels.filter((m) => result.has(formatModel(m)));
 					});
 					const removed = before - next.allowedModels.length;
-					updateStatus(ctx, next);
 					ctx.ui.notify(
 						removed > 0 ? `Removed ${removed} model(s)` : "No models removed",
 						"info",
@@ -424,7 +401,6 @@ export default async function (pi: ExtensionAPI) {
 			await saveGuard((draft) => {
 				draft.allowedModels = allowedModels;
 			});
-			updateStatus(ctx, getSettings().modelGuard);
 			ctx.ui.notify(
 				`Updated preferences: ${allowedModels.length} model(s) allowed`,
 				"info",
@@ -442,7 +418,6 @@ export default async function (pi: ExtensionAPI) {
 				"info",
 			);
 		}
-		updateStatus(ctx, modelGuard);
 	});
 
 	// ── Input: check model against preferences before agent runs ───
@@ -494,7 +469,5 @@ export default async function (pi: ExtensionAPI) {
 				ctx.ui.notify(`⚠️  ${modelName} — NOT in preferred models`, "warning");
 			}
 		}
-
-		updateStatus(ctx, modelGuard);
 	});
 }

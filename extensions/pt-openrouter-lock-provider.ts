@@ -21,7 +21,6 @@
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { DynamicBorder } from "@earendil-works/pi-coding-agent";
-import type { Model } from "@earendil-works/pi-ai";
 import {
 	Container,
 	Key,
@@ -43,27 +42,6 @@ import {
 } from "../src/openrouter";
 import { persistDefaultModel } from "../src/pi-settings";
 import { loadSettings } from "../src/store";
-
-const STATUS_KEY = "pt-openrouter-lock";
-
-async function updateStatus(
-	ctx: ExtensionContext,
-	model: Model<any> | undefined,
-): Promise<void> {
-	if (!model || model.provider !== OPENROUTER_PROVIDER) {
-		ctx.ui.setStatus(STATUS_KEY, undefined);
-		return;
-	}
-	if (!(await isOpenRouterLockEnabled())) {
-		ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", "or-lock: off"));
-		return;
-	}
-	const lock = await getLock(await baseIdOf(model.id));
-	ctx.ui.setStatus(
-		STATUS_KEY,
-		lock ? ctx.ui.theme.fg("accent", `or-lock: ${lock}`) : undefined,
-	);
-}
 
 /** TUI searchable picker over available OpenRouter models plus known locks. */
 async function showLockPicker(ctx: ExtensionContext): Promise<void> {
@@ -162,7 +140,7 @@ async function showLockPicker(ctx: ExtensionContext): Promise<void> {
 	if (input === undefined) return;
 
 	const value = input.trim();
-	await applyLock(ctx, selected, value || undefined);
+	await applyLock(selected, value || undefined);
 	ctx.ui.notify(
 		value
 			? `OpenRouter provider lock for ${selected}: ${value}`
@@ -172,27 +150,14 @@ async function showLockPicker(ctx: ExtensionContext): Promise<void> {
 }
 
 /** Persist a lock change and keep pi's default model suffix in sync. */
-async function applyLock(
-	ctx: ExtensionContext,
-	baseId: string,
-	provider: string | undefined,
-): Promise<void> {
+async function applyLock(baseId: string, provider: string | undefined): Promise<void> {
 	if (provider) await setLock(baseId, provider);
 	else await clearLock(baseId);
 	await persistDefaultModel(OPENROUTER_PROVIDER, baseId);
-	await updateStatus(ctx, ctx.model);
 }
 
 export default async function (pi: ExtensionAPI) {
 	await loadSettings();
-
-	pi.on("model_select", async (event, ctx) => {
-		await updateStatus(ctx, event.model);
-	});
-
-	pi.on("session_start", async (_event, ctx) => {
-		await updateStatus(ctx, ctx.model);
-	});
 
 	// Apply / strip OpenRouter provider locks at request time.
 	pi.on("before_provider_request", async (event, ctx) => {
@@ -247,7 +212,6 @@ export default async function (pi: ExtensionAPI) {
 			if (sub === "on" || sub === "off") {
 				const enabled = sub === "on";
 				await setEnabled(enabled);
-				await updateStatus(ctx, current);
 				ctx.ui.notify(
 					`openrouter-lock-provider ${enabled ? "enabled" : "disabled"}`,
 					"info",
@@ -282,7 +246,7 @@ export default async function (pi: ExtensionAPI) {
 					ctx.ui.notify(`No provider lock set for ${baseId}`, "info");
 					return;
 				}
-				await applyLock(ctx, baseId, undefined);
+				await applyLock(baseId, undefined);
 				ctx.ui.notify(`Cleared provider lock for ${baseId}`, "info");
 				return;
 			}
@@ -294,7 +258,7 @@ export default async function (pi: ExtensionAPI) {
 					return;
 				}
 				const baseId = await baseIdOf(current.id);
-				await applyLock(ctx, baseId, trimmed);
+				await applyLock(baseId, trimmed);
 				ctx.ui.notify(
 					`OpenRouter provider lock for ${baseId}: ${trimmed}\n` +
 						`defaultModel -> ${makeVariantId(baseId, trimmed)}`,

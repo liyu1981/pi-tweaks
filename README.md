@@ -148,8 +148,8 @@ After installing, restart pi (or run `/reload` in the TUI) to pick up edits.
 > remove them before installing this package, otherwise both sets run:
 >
 > ```bash
-> rm ~/.pi/agent/extensions/remember-model.ts
-> rm ~/.pi/agent/extensions/model-preference-guard.ts
+> rm ~/.pi/agent/extensions/pt-remember-model.ts
+> rm ~/.pi/agent/extensions/pt-model-guard.ts
 > ```
 
 ### Pre-publish check
