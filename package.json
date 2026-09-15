@@ -40,7 +40,11 @@
 		"typescript": "^5.9.3"
 	},
 	"scripts": {
-		"check": "tsc --noEmit"
+		"check": "tsc --noEmit",
+		"dev": "pi -e .",
+		"install:local": "pi install .",
+		"uninstall:local": "pi remove .",
+		"pack:check": "npm pack --dry-run"
 	},
 	"engines": {
 		"node": ">=22.19.0"

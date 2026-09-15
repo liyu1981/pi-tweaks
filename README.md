@@ -11,21 +11,19 @@ All features share a single settings file and all commands are prefixed with `pt
 ## Install
 
 ```bash
+# from npm (once published)
 pi install npm:@liyu1981/pi-tweaks
-# or a pinned version
-pi install npm:@liyu1981/pi-tweaks@0.1.0
+pi install npm:@liyu1981/pi-tweaks@0.1.0   # pinned
+
+# from GitHub
+pi install git:github.com/liyu1981/pi-tweaks
 ```
 
 Try it without installing:
 
 ```bash
 pi -e npm:@liyu1981/pi-tweaks
-```
-
-Local development:
-
-```bash
-pi -e /path/to/pi-tweaks
+pi -e git:github.com/liyu1981/pi-tweaks
 ```
 
 ## Commands
@@ -110,13 +108,54 @@ At request time the extension sets OpenRouter's `provider.order` to your locked 
 
 Maintain an allow-list of preferred `provider/model` combinations. When you type a prompt with a model outside the list, pi asks for confirmation first. With an empty list the guard allows everything. Disable temporarily with `/pt-model-guard-pref toggle`.
 
-## Development
+## Local development
 
-No build step: pi loads TypeScript directly via jiti. Type-checking only:
+No build step: pi loads TypeScript directly via jiti.
 
 ```bash
-npm install
-npm run check
+npm install        # once, for the type-checker and dev deps
+npm run check      # tsc --noEmit
+```
+
+### Validate against a local pi (no install)
+
+Loads this working tree as a package for a single run. Edits are picked up on
+the next run.
+
+```bash
+npm run dev                                  # pi -e .
+npm run dev -- --model openrouter/deepseek/deepseek-v4.1-flash
+
+# or directly
+pi -e .
+```
+
+### Install this working tree into pi (live path)
+
+Installs this directory into pi's settings as a **local package**. The path is
+referenced, not copied, so pi keeps loading the current working tree —
+including uncommitted changes — until you remove it. This is the way to test the
+latest code before pushing to GitHub or publishing to npm.
+
+```bash
+npm run install:local      # pi install .
+npm run uninstall:local    # pi remove .
+```
+
+After installing, restart pi (or run `/reload` in the TUI) to pick up edits.
+
+> **Avoid duplicate handlers.** If you previously loaded the standalone files,
+> remove them before installing this package, otherwise both sets run:
+>
+> ```bash
+> rm ~/.pi/agent/extensions/remember-model.ts
+> rm ~/.pi/agent/extensions/model-preference-guard.ts
+> ```
+
+### Pre-publish check
+
+```bash
+npm run pack:check   # npm pack --dry-run: shows exactly which files would ship
 ```
 
 ## License
