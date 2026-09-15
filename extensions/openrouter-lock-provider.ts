@@ -16,6 +16,7 @@
  *   /pt-openrouter-lock-provider <provider> - lock provider for the current model
  *   /pt-openrouter-lock-provider clear      - clear lock for the current model
  *   /pt-openrouter-lock-provider list       - list all locks
+ *   /pt-openrouter-lock-provider on|off     - enable/disable the whole feature
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -33,9 +34,11 @@ import {
 	baseIdOf,
 	clearLock,
 	getLock,
+	isOpenRouterLockEnabled,
 	listLocks,
 	makeVariantId,
 	OPENROUTER_PROVIDER,
+	setEnabled,
 	setLock,
 } from "../src/openrouter";
 import { persistDefaultModel } from "../src/pi-settings";
@@ -49,6 +52,10 @@ async function updateStatus(
 ): Promise<void> {
 	if (!model || model.provider !== OPENROUTER_PROVIDER) {
 		ctx.ui.setStatus(STATUS_KEY, undefined);
+		return;
+	}
+	if (!(await isOpenRouterLockEnabled())) {
+		ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", "or-lock: off"));
 		return;
 	}
 	const lock = await getLock(await baseIdOf(model.id));
@@ -191,6 +198,7 @@ export default async function (pi: ExtensionAPI) {
 	pi.on("before_provider_request", async (event, ctx) => {
 		const model = ctx.model;
 		if (!model || model.provider !== OPENROUTER_PROVIDER) return;
+		if (!(await isOpenRouterLockEnabled())) return;
 
 		const payload = event.payload;
 		if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
@@ -233,24 +241,38 @@ export default async function (pi: ExtensionAPI) {
 		handler: async (args, ctx) => {
 			const current = ctx.model;
 			const trimmed = (args ?? "").trim();
+			const sub = trimmed.toLowerCase();
+
+			// /pt-openrouter-lock-provider on|off
+			if (sub === "on" || sub === "off") {
+				const enabled = sub === "on";
+				await setEnabled(enabled);
+				await updateStatus(ctx, current);
+				ctx.ui.notify(
+					`openrouter-lock-provider ${enabled ? "enabled" : "disabled"}`,
+					"info",
+				);
+				return;
+			}
 
 			// /pt-openrouter-lock-provider list
-			if (trimmed.toLowerCase() === "list") {
+			if (sub === "list") {
+				const enabled = await isOpenRouterLockEnabled();
 				const locks = await listLocks();
 				const entries = Object.entries(locks);
 				ctx.ui.notify(
-					entries.length
-						? `OpenRouter provider locks:\n${entries
-								.map(([id, provider]) => `  • ${id} -> ${provider}`)
-								.join("\n")}`
-						: "No OpenRouter provider locks set",
+					`OpenRouter provider locks (${enabled ? "ON" : "OFF"}):\n${
+						entries.length
+							? entries.map(([id, provider]) => `  • ${id} -> ${provider}`).join("\n")
+							: "  (none)"
+					}`,
 					"info",
 				);
 				return;
 			}
 
 			// /pt-openrouter-lock-provider clear
-			if (trimmed.toLowerCase() === "clear") {
+			if (sub === "clear") {
 				if (!current || current.provider !== OPENROUTER_PROVIDER) {
 					ctx.ui.notify("Current model is not an OpenRouter model", "warning");
 					return;
@@ -284,7 +306,7 @@ export default async function (pi: ExtensionAPI) {
 			// No args: TUI picker
 			if (ctx.mode !== "tui") {
 				ctx.ui.notify(
-					"Usage: /pt-openrouter-lock-provider <provider> | clear | list",
+					"Usage: /pt-openrouter-lock-provider <provider> | clear | list | on | off",
 					"info",
 				);
 				return;

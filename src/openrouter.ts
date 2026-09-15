@@ -10,6 +10,10 @@
  * `openrouterModelProviderPref.locks`). At request time the lock is expressed
  * as OpenRouter's `provider.order`, and the `:<provider>` suffix that
  * `remember-model` writes into pi's `defaultModel` is stripped again.
+ *
+ * The whole feature can be disabled with `openrouterModelProviderPref.enabled`.
+ * While disabled, {@link getLock} returns undefined and nothing is appended,
+ * stripped, or routed.
  */
 
 import { loadSettings, updateSettings } from "./store";
@@ -34,9 +38,27 @@ export async function listLocks(): Promise<Record<string, string>> {
 	return { ...settings.openrouterModelProviderPref.locks };
 }
 
+/** Whether the OpenRouter provider-lock feature is currently active. */
+export async function isOpenRouterLockEnabled(): Promise<boolean> {
+	const settings = await loadSettings();
+	return settings.openrouterModelProviderPref.enabled;
+}
+
+/**
+ * Active lock for a model. Returns undefined while the feature is disabled, so
+ * consumers (remember-model, request routing) stop applying locks immediately.
+ */
 export async function getLock(baseId: string): Promise<string | undefined> {
-	const locks = await listLocks();
-	return locks[baseId];
+	const settings = await loadSettings();
+	if (!settings.openrouterModelProviderPref.enabled) return undefined;
+	return settings.openrouterModelProviderPref.locks[baseId];
+}
+
+/** Toggle the whole OpenRouter provider-lock feature on or off. */
+export async function setEnabled(enabled: boolean): Promise<void> {
+	await updateSettings((draft) => {
+		draft.openrouterModelProviderPref.enabled = enabled;
+	});
 }
 
 export async function setLock(baseId: string, provider: string): Promise<void> {

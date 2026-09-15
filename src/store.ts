@@ -11,7 +11,7 @@
  *     "version": 1,
  *     "rememberModel": { "enabled": true, "last": { "provider": "...", "modelId": "..." } },
  *     "modelGuard":    { "enabled": true, "allowedModels": [{ "provider": "...", "model": "..." }] },
- *     "openrouterModelProviderPref": { "locks": { "<baseModelId>": "<providerSlug>" } }
+ *     "openrouterModelProviderPref": { "enabled": true, "locks": { "<baseModelId>": "<providerSlug>" } }
  *   }
  *
  * Reads go through {@link loadSettings} (cached), writes through
@@ -42,6 +42,7 @@ export interface ModelGuardState {
 }
 
 export interface OpenRouterProviderPrefState {
+	enabled: boolean;
 	/** base model id -> preferred upstream provider slug */
 	locks: Record<string, string>;
 }
@@ -62,7 +63,7 @@ function defaults(): PiTweaksSettings {
 		version: SETTINGS_VERSION,
 		rememberModel: { enabled: true },
 		modelGuard: { enabled: true, allowedModels: [] },
-		openrouterModelProviderPref: { locks: {} },
+		openrouterModelProviderPref: { enabled: true, locks: {} },
 	};
 }
 
@@ -121,8 +122,10 @@ function normalize(raw: unknown): PiTweaksSettings {
 	}
 
 	if (isObject(raw.openrouterModelProviderPref)) {
+		const or = raw.openrouterModelProviderPref;
 		out.openrouterModelProviderPref = {
-			locks: normalizeLocks(raw.openrouterModelProviderPref.locks),
+			enabled: or.enabled !== false,
+			locks: normalizeLocks(or.locks),
 		};
 	}
 
@@ -164,7 +167,10 @@ async function migrateLegacy(): Promise<PiTweaksSettings | undefined> {
 	}
 
 	if (isObject(locksRaw)) {
-		out.openrouterModelProviderPref.locks = normalizeLocks(locksRaw);
+		out.openrouterModelProviderPref = {
+			enabled: true,
+			locks: normalizeLocks(locksRaw),
+		};
 	}
 
 	if (isObject(guardRaw)) {

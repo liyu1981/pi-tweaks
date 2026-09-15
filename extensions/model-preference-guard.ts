@@ -11,7 +11,8 @@
  * Command:
  *   /pt-model-guard-pref          - Open picker to manage preferences
  *   /pt-model-guard-pref list     - Show current allowed models
- *   /pt-model-guard-pref toggle   - Enable/disable guard without deleting preferences
+ *   /pt-model-guard-pref on|off   - Enable/disable guard
+ *   /pt-model-guard-pref toggle   - Toggle guard without deleting preferences
  *   /pt-model-guard-pref add      - Open model picker to add more
  *   /pt-model-guard-pref remove   - Open model picker to remove
  */
@@ -314,6 +315,16 @@ export default async function (pi: ExtensionAPI) {
 						"info",
 					);
 				}
+				return;
+			}
+
+			if (sub === "on" || sub === "off") {
+				const enabled = sub === "on";
+				const next = await saveGuard((draft) => {
+					draft.enabled = enabled;
+				});
+				updateStatus(ctx, next);
+				ctx.ui.notify(`Model guard ${enabled ? "enabled" : "disabled"}`, "info");
 				return;
 			}
 

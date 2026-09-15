@@ -33,8 +33,12 @@ pi -e /path/to/pi-tweaks
 | Command | Description |
 | --- | --- |
 | `/pt-remember-model [status\|on\|off\|clear]` | Remember and restore the last selected model. |
-| `/pt-openrouter-lock-provider [<provider>\|clear\|list]` | Manage OpenRouter provider locks. No argument opens a TUI picker. |
-| `/pt-model-guard-pref [list\|toggle\|add\|remove]` | Manage the allowed-model list. No argument opens a multi-select picker. |
+| `/pt-openrouter-lock-provider [<provider>\|clear\|list\|on\|off]` | Manage OpenRouter provider locks. No argument opens a TUI picker. |
+| `/pt-model-guard-pref [list\|on\|off\|toggle\|add\|remove]` | Manage the allowed-model list. No argument opens a multi-select picker. |
+
+Every feature has an on/off switch and defaults to **on**. Turning off
+`openrouter-lock-provider` also stops `remember-model` from appending the
+`:<provider>` suffix to the default model.
 
 ## Settings
 
@@ -64,6 +68,7 @@ Everything is stored in one file:
 
   // /pt-openrouter-lock-provider (base model id -> upstream provider slug)
   "openrouterModelProviderPref": {
+    "enabled": true,
     "locks": { "deepseek/deepseek-v4.1-flash": "deepseek" }
   }
 }
@@ -99,7 +104,7 @@ OpenRouter routes a model across several upstream providers. A lock pins one:
 /pt-openrouter-lock-provider list
 ```
 
-At request time the extension sets OpenRouter's `provider.order` to your locked provider and strips the `:<provider>` suffix so OpenRouter never sees it.
+At request time the extension sets OpenRouter's `provider.order` to your locked provider and strips the `:<provider>` suffix so OpenRouter never sees it. Disable the whole feature with `/pt-openrouter-lock-provider off`; while off, `remember-model` writes the plain base model id (no suffix) and no routing is applied.
 
 ### model-preference-guard
 
