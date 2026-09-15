@@ -1,6 +1,6 @@
 {
 	"name": "@liyu1981/pi-tweaks",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "pi extensions: remembered model, OpenRouter provider lock, and model preference guard",
 	"type": "module",
 	"keywords": [
