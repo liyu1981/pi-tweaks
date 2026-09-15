@@ -194,7 +194,19 @@ After installing, restart pi (or run `/reload` in the TUI) to pick up edits.
 ### Pre-publish check
 
 ```bash
+npm run check        # tsc --noEmit
 npm run pack:check   # npm pack --dry-run: shows exactly which files would ship
+```
+
+### Publishing
+
+The package is published publicly to the `@liyu1981` scope
+(`publishConfig.access: "public"`), so a plain publish works:
+
+```bash
+npm version patch          # or minor / major
+npm publish                # prepublishOnly runs `npm run check` first
+git push --follow-tags
 ```
 
 ## License

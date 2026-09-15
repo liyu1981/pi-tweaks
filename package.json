@@ -16,6 +16,13 @@
 		"type": "git",
 		"url": "git+https://github.com/liyu1981/pi-tweaks.git"
 	},
+	"homepage": "https://github.com/liyu1981/pi-tweaks#readme",
+	"bugs": {
+		"url": "https://github.com/liyu1981/pi-tweaks/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"files": [
 		"extensions",
 		"src",
@@ -44,7 +51,8 @@
 		"dev": "pi -e .",
 		"install:local": "pi install .",
 		"uninstall:local": "pi remove .",
-		"pack:check": "npm pack --dry-run"
+		"pack:check": "npm pack --dry-run",
+		"prepublishOnly": "npm run check"
 	},
 	"engines": {
 		"node": ">=22.19.0"
