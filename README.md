@@ -1,12 +1,20 @@
 # @liyu1981/pi-tweaks
 
-A small collection of [pi](https://pi.dev) extensions bundled as one pi package:
+A small collection of [pi](https://pi.dev) extensions bundled as one pi package.
+It fixes three everyday annoyances when you use pi with a mixed model set:
 
-- **remember-model** — remembers the last selected model and restores it next session.
-- **openrouter-lock-provider** — pins an OpenRouter model to a preferred upstream provider.
-- **model-preference-guard** — warns when you are about to chat with a model you did not allow-list.
+1. **Pi forgets your model.** Every new session starts on whatever is in
+   `settings.json`, so you re-pick by hand. → **remember-model** remembers the
+   model you last selected and restores it next session.
+2. **OpenRouter routes to a random upstream provider.** The same model id can be
+   served by backends with different speed/quality/price. →
+   **openrouter-lock-provider** pins a model to the upstream provider you choose.
+3. **You accidentally chat with the wrong model.** A stray Ctrl+P or `/model` can
+   send a prompt to a costly or weak model. → **model-preference-guard** warns and
+   asks for confirmation before a prompt leaves for a model outside your
+   allow-list.
 
-All features share a single settings file and all commands are prefixed with `pt-`.
+All features share one settings file and all commands are prefixed with `pt-`.
 
 ## Install
 
@@ -25,6 +33,47 @@ Try it without installing:
 pi -e npm:@liyu1981/pi-tweaks
 pi -e git:github.com/liyu1981/pi-tweaks
 ```
+
+## TUI configuration
+
+Several commands open interactive pickers, styled like pi's own `/model` picker.
+
+### Model multi-select picker
+
+Used by `/pt-model-guard-pref` (no args, or `add` / `remove`).
+
+| Key | Action |
+| --- | --- |
+| type | substring-filter on `provider/model` |
+| ↑ / ↓ | move cursor |
+| Space | toggle highlighted model (and advance) |
+| `a` / `n` | select all / none (only while the search box is empty) |
+| Enter | confirm selection |
+| Esc | clear search, or cancel if search is already empty |
+
+- `☑` checked, `☐` unchecked; models without a configured API key show `⚠ no key`.
+- Checked models sort first, then keyed models, then alphabetically; 20 rows are
+  visible at a time with a scroll indicator.
+
+### Provider-lock picker
+
+Used by `/pt-openrouter-lock-provider` with no arguments.
+
+| Key | Action |
+| --- | --- |
+| type | filter model ids |
+| ↑ / ↓ | move cursor |
+| Backspace | delete a search character |
+| Esc | clear search, or cancel if empty |
+| Enter | pick the highlighted model |
+
+After picking, a one-line text prompt asks for the provider slug (empty clears
+the lock).
+
+### Confirmation prompt
+
+`model-preference-guard` uses pi's standard Yes/No confirm before sending a
+prompt to a non-allow-listed model; declining cancels the send.
 
 ## Commands
 
@@ -73,16 +122,6 @@ Everything is stored in one file:
 ```
 
 Missing sections are filled with defaults on load. Writes are serialized and atomic, so the three extensions can safely update the file concurrently.
-
-### Legacy migration
-
-On first run, if `pi-tweaks-settings.json` does not exist, it is seeded from the older per-feature files (left in place, not deleted):
-
-| Legacy file | New location |
-| --- | --- |
-| `~/.pi/agent/last-model.json` | `rememberModel.last` |
-| `~/.pi/agent/openrouter-provider-prefs.json` | `openrouterModelProviderPref.locks` |
-| `~/.pi/agent/model-preferences.json` | `modelGuard` |
 
 ## How features work
 
