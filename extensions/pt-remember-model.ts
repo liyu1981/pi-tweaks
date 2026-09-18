@@ -41,6 +41,11 @@ async function resolveModel(
 }
 
 export default async function (pi: ExtensionAPI) {
+	// Subagent children are launched with an explicit `--model`; never let the
+	// remembered default override it, and never let the child's model selection
+	// clobber the user's remembered model. See src/subagent.ts.
+	if (process.env.PT_SUBAGENT_CHILD === "1") return;
+
 	await loadSettings();
 
 	// Track model selection changes.

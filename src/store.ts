@@ -11,7 +11,8 @@
  *     "version": 1,
  *     "rememberModel": { "enabled": true, "last": { "provider": "...", "modelId": "..." } },
  *     "modelGuard":    { "enabled": true, "allowedModels": [{ "provider": "...", "model": "..." }] },
- *     "openrouterModelProviderPref": { "enabled": true, "locks": { "<baseModelId>": "<providerSlug>" } }
+ *     "openrouterModelProviderPref": { "enabled": true, "locks": { "<baseModelId>": "<providerSlug>" } },
+ *     "subagent":      { "profiles": [{ "name": "...", "provider": "...", "model": "..." }] }
  *   }
  *
  * Reads go through {@link loadSettings} (cached), writes through
@@ -47,11 +48,23 @@ export interface OpenRouterProviderPrefState {
 	locks: Record<string, string>;
 }
 
+/** A named subagent profile: a display name plus the model it runs on. */
+export interface SubagentProfile {
+	name: string;
+	provider: string;
+	model: string;
+}
+
+export interface SubagentState {
+	profiles: SubagentProfile[];
+}
+
 export interface PiTweaksSettings {
 	version: typeof SETTINGS_VERSION;
 	rememberModel: RememberModelState;
 	modelGuard: ModelGuardState;
 	openrouterModelProviderPref: OpenRouterProviderPrefState;
+	subagent: SubagentState;
 }
 
 export function settingsPath(): string {
@@ -64,6 +77,7 @@ function defaults(): PiTweaksSettings {
 		rememberModel: { enabled: true },
 		modelGuard: { enabled: true, allowedModels: [] },
 		openrouterModelProviderPref: { enabled: true, locks: {} },
+		subagent: { profiles: [] },
 	};
 }
 
@@ -83,6 +97,22 @@ function normalizeAllowedModels(value: unknown): AllowedModel[] {
 		const provider = asString(entry.provider);
 		const model = asString(entry.model);
 		if (provider && model) out.push({ provider, model });
+	}
+	return out;
+}
+
+function normalizeSubagentProfiles(value: unknown): SubagentProfile[] {
+	if (!Array.isArray(value)) return [];
+	const out: SubagentProfile[] = [];
+	const seen = new Set<string>();
+	for (const entry of value) {
+		if (!isObject(entry)) continue;
+		const name = asString(entry.name);
+		const provider = asString(entry.provider);
+		const model = asString(entry.model);
+		if (!name || !provider || !model || seen.has(name)) continue;
+		seen.add(name);
+		out.push({ name, provider, model });
 	}
 	return out;
 }
@@ -127,6 +157,10 @@ function normalize(raw: unknown): PiTweaksSettings {
 			enabled: or.enabled !== false,
 			locks: normalizeLocks(or.locks),
 		};
+	}
+
+	if (isObject(raw.subagent)) {
+		out.subagent = { profiles: normalizeSubagentProfiles(raw.subagent.profiles) };
 	}
 
 	return out;

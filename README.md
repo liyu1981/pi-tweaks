@@ -1,7 +1,7 @@
 # @liyu1981/pi-tweaks
 
 A small collection of [pi](https://pi.dev) extensions bundled as one pi package.
-It fixes three everyday annoyances when you use pi with a mixed model set:
+It fixes four everyday annoyances when you use pi with a mixed model set:
 
 1. **Pi forgets your model.** Every new session starts on whatever is in
    `settings.json`, so you re-pick by hand. → **remember-model** remembers the
@@ -13,6 +13,10 @@ It fixes three everyday annoyances when you use pi with a mixed model set:
    send a prompt to a costly or weak model. → **model-preference-guard** warns and
    asks for confirmation before a prompt leaves for a model outside your
    allow-list.
+4. **Delegating a focused task means polluting your context or juggling another
+   terminal.** → **subagent** runs a task in an isolated `pi` process on a named
+   profile (its own model), then folds the captured conversation into your
+   session, expandable with Ctrl+O and abortable with Esc.
 
 All features share one settings file and all commands are prefixed with `pt-`.
 
@@ -70,6 +74,34 @@ Used by `/pt-openrouter-lock-provider` with no arguments.
 After picking, a one-line text prompt asks for the provider slug (empty clears
 the lock).
 
+### Subagent profile list
+
+Opened by `/pt-subagent` (and shown before the task prompt when you run
+`/pt-subagent <text>`).
+
+| Key | Action |
+| --- | --- |
+| ↑ / ↓ | move cursor |
+| Enter | open the **task prompt** phase for the highlighted profile |
+| `e` | edit the highlighted profile (name, then model picker) |
+| `a` | add a profile (asks for a name, then opens the model picker) |
+| `d` | delete the highlighted profile (with confirmation) |
+| Esc | close |
+
+Each row shows `name` and its `provider/model`, with `:provider` appended when
+an OpenRouter provider lock is set.
+
+### Subagent task prompt
+
+Shown after choosing a profile. It lists the profile and the system prompt the
+subagent will receive, then gives you a multi-line editor for the task.
+
+| Key | Action |
+| --- | --- |
+| Enter | run the task |
+| Ctrl+J / Shift+Enter | insert a newline |
+| Esc | back to the profile list |
+
 ### Confirmation prompt
 
 `model-preference-guard` uses pi's standard Yes/No confirm before sending a
@@ -82,6 +114,7 @@ prompt to a non-allow-listed model; declining cancels the send.
 | `/pt-remember-model [status\|on\|off\|clear]` | Remember and restore the last selected model. |
 | `/pt-openrouter-lock-provider [<provider>\|clear\|list\|on\|off]` | Manage OpenRouter provider locks. No argument opens a TUI picker. |
 | `/pt-model-guard-pref [list\|on\|off\|toggle\|add\|remove]` | Manage the allowed-model list. No argument opens a multi-select picker. |
+| `/pt-subagent [\-p <profile> [prompt]]` | No argument: profile list → task prompt. With `-p <profile>`: run directly (or open the task prompt if no prompt given). Otherwise the text is the task prompt; the profile list opens first. |
 
 Every feature has an on/off switch and defaults to **on**. Turning off
 `openrouter-lock-provider` also stops `remember-model` from appending the
@@ -117,11 +150,18 @@ Everything is stored in one file:
   "openrouterModelProviderPref": {
     "enabled": true,
     "locks": { "deepseek/deepseek-v4.1-flash": "deepseek" }
+  },
+
+  // /pt-subagent (named profiles; OpenRouter locks applied at run time)
+  "subagent": {
+    "profiles": [
+      { "name": "scout", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash" }
+    ]
   }
 }
 ```
 
-Missing sections are filled with defaults on load. Writes are serialized and atomic, so the three extensions can safely update the file concurrently.
+Missing sections are filled with defaults on load. Writes are serialized and atomic, so the extensions can safely update the file concurrently.
 
 ## How features work
 
@@ -146,6 +186,36 @@ At request time the extension sets OpenRouter's `provider.order` to your locked 
 ### model-preference-guard
 
 Maintain an allow-list of preferred `provider/model` combinations. When you type a prompt with a model outside the list, pi asks for confirmation first. With an empty list the guard allows everything. Disable temporarily with `/pt-model-guard-pref toggle`.
+
+### subagent
+
+Define named profiles (`name` + `provider/model`) with `/pt-subagent`. Running
+it without arguments opens the profile list; press Enter to move to the task
+prompt phase, which shows the chosen profile and its system prompt and gives
+you a multi-line editor (Enter runs, Ctrl+J adds a newline, Esc goes back).
+
+`/pt-subagent -p scout summarize the README` runs that profile directly, and
+`/pt-subagent summarize the README` opens the profile list first with the task
+pre-filled. A run spawns an isolated `pi --mode json` process on the chosen
+profile, streams its tool calls and output live, and stores the captured
+conversation in the transcript as a foldable entry (Ctrl+O to expand, Esc to
+abort).
+
+The subagent conversation is display-only: it never enters your parent session's
+LLM context. OpenRouter provider locks apply automatically — the profile's base
+model id is turned into the `<model>:<provider>` variant for the child, whose
+`openrouter-lock-provider` handler strips the suffix and sets
+OpenRouter's `provider.order`.
+
+The child mirrors the parent's **project-trust** decision (`--approve` /
+`--no-approve`). This matters because project system-prompt files
+(`.pi/SYSTEM.md`, `.pi/APPEND_SYSTEM.md`), project settings, extensions and
+skills are trust-gated: without `--approve` a non-interactive child would
+silently drop them even though your interactive session loaded them. The child
+is also given an explicit system-prompt preamble stating its working directory
+and instructing it to follow the project instructions (`AGENTS.md`,
+`AGENTS.override.md`, or `CLAUDE.md`) — reading them first if they are not
+already in context.
 
 ## Local development
 

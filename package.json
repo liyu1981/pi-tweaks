@@ -1,14 +1,15 @@
 {
 	"name": "@liyu1981/pi-tweaks",
 	"version": "0.1.1",
-	"description": "pi extensions: remembered model, OpenRouter provider lock, and model preference guard",
+	"description": "pi extensions: remembered model, OpenRouter provider lock, model preference guard, and isolated subagents",
 	"type": "module",
 	"keywords": [
 		"pi-package",
 		"pi",
 		"extension",
 		"openrouter",
-		"model-preferences"
+		"model-preferences",
+		"subagent"
 	],
 	"license": "MIT",
 	"author": "Yu Li <liyu1981@gmail.com>",
